@@ -152,6 +152,7 @@
         <button role="tab" id="tab-breakdown" aria-controls="panel-breakdown" aria-selected="true"  class="tab">Per-finger breakdown</button>
         <button role="tab" id="tab-henry"     aria-controls="panel-henry"     aria-selected="false" class="tab" tabindex="-1">Henry working</button>
         <button role="tab" id="tab-reference" aria-controls="panel-reference" aria-selected="false" class="tab" tabindex="-1">Code tables</button>
+        <button role="tab" id="tab-practice"  aria-controls="panel-practice"  aria-selected="false" class="tab tab-accent" tabindex="-1">Practice<span class="tab-dot" aria-hidden="true"></span></button>
     </div>
 
     <div class="panel" id="panel-breakdown" role="tabpanel" aria-labelledby="tab-breakdown" tabindex="0">
@@ -263,6 +264,42 @@
 
         </div>
     </div>
+
+    <!-- Practice. Real impressions, one at a time, name the pattern. The
+         hand is given because a loop cannot be called ulnar or radial
+         without it — which is the point of the drill. -->
+    <div class="panel" id="panel-practice" role="tabpanel" aria-labelledby="tab-practice" tabindex="0" hidden>
+        <div class="practice">
+
+            <figure class="practice-plate">
+                <div class="practice-print" id="quizPlate"></div>
+                <figcaption class="practice-hand" id="quizHand">—</figcaption>
+            </figure>
+
+            <div class="practice-body">
+                <p class="practice-prompt" id="quizPrompt">Which pattern is this?</p>
+                <div class="practice-options" id="quizOptions"></div>
+                <div class="practice-feedback" id="quizFeedback" role="status" aria-live="polite"></div>
+                <div class="practice-actions">
+                    <button type="button" class="btn btn-primary" id="quizNext">Next print</button>
+                    <button type="button" class="btn" id="quizReset">Reset score</button>
+                </div>
+            </div>
+
+            <aside class="practice-score" aria-label="Score">
+                <div class="score-line">
+                    <span class="score-num" id="quizStreak">0</span>
+                    <span class="score-label">streak</span>
+                </div>
+                <div class="score-line">
+                    <span class="score-num" id="quizPct">—</span>
+                    <span class="score-label">correct</span>
+                </div>
+                <p class="score-tally"><output id="quizTally">no answers yet</output></p>
+            </aside>
+
+        </div>
+    </div>
 </section>
 
 <footer class="colophon">
@@ -278,10 +315,33 @@
 
 </main>
 
+<!-- The loupe. Any print box opens here, big enough to actually read the
+     ridges, with the plate it came from. -->
+<div class="loupe" id="loupe" hidden>
+    <div class="loupe-sheet" role="dialog" aria-modal="true" aria-labelledby="loupeTitle">
+        <button type="button" class="loupe-close" id="loupeClose" aria-label="Close">&times;</button>
+        <div class="loupe-plate">
+            <img id="loupeImg" alt="" draggable="false">
+        </div>
+        <div class="loupe-info">
+            <p class="loupe-eyebrow" id="loupeFinger">—</p>
+            <h3 id="loupeTitle">—</h3>
+            <p class="loupe-note" id="loupeNote"></p>
+            <dl class="loupe-codes">
+                <div><dt>NCIC</dt><dd id="loupeNcic">··</dd></div>
+                <div><dt>IAFIS</dt><dd id="loupeAfis">··</dd></div>
+                <div><dt>Plate</dt><dd id="loupeFig">—</dd></div>
+            </dl>
+            <p class="loupe-src">Reference impression from the FBI, <em>The Science of
+            Fingerprints</em>. Drag or scroll the image to inspect the ridges.</p>
+        </div>
+    </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="assets/classify.js"></script>
-<script src="assets/plates.js"></script>
+<script src="assets/prints.js"></script>
 <script src="assets/patterns.js"></script>
 <script src="assets/app.js"></script>
 </body>

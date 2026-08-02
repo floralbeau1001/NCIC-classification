@@ -105,6 +105,120 @@
     });
 
     /* =====================================================================
+       Second anchor — FBI manual, figure 353.
+       Printed classification:   22  M 11 U OOO
+                                     L  6 U OMI 13
+
+       Worth having alongside 352 because it drives three paths that card
+       does not. The left thumb counts 18, so the right thumb reads on the
+       expanded table and lands on M rather than L. Neither little finger
+       carries a loop on the right, so the final falls through to the left
+       little finger and is written in the denominator. And the whorls sit
+       in the subsecondary, where their tracings pass straight through.
+
+         1 ulnar 22   2 ulnar 11   3 ulnar 19   4 whorl O   5 whorl O
+         6 ulnar 18   7 ulnar 10   8 whorl M    9 whorl I  10 ulnar 13
+       ===================================================================== */
+    var FIG353 = card([
+        [U, 22], [U, 11], [U, 19], [PW, null, "O"], [PW, null, "O"],
+        [U, 18], [U, 10], [PW, null, "M"], [PW, null, "I"], [U, 13]
+    ]);
+
+    test("fig. 353 — Henry numerator", function () {
+        eq(A.henry(FIG353).numerator, "22 M 11 U OOO");
+    });
+
+    test("fig. 353 — Henry denominator", function () {
+        eq(A.henry(FIG353).denominator, "L 6 U OMI 13");
+    });
+
+    test("fig. 353 — primary counts whorls even over odd", function () {
+        eq(A.henry(FIG353).primary.text, "11/6");
+    });
+
+    test("fig. 353 — expanded major table lands on M, not L", function () {
+        var h = A.henry(FIG353);
+        eq(h.major.num, "M", "right thumb 22 is 18-22 on the expanded table");
+        eq(h.major.den, "L", "left thumb 18");
+        eq(h.major.table, A.MAJOR_EXPANDED);
+    });
+
+    test("fig. 353 — whorl tracings pass into the subsecondary", function () {
+        var h = A.henry(FIG353);
+        eq(h.subsecondary.num, "OOO");
+        eq(h.subsecondary.den, "OMI");
+    });
+
+    test("fig. 353 — final falls to the left little finger", function () {
+        var h = A.henry(FIG353);
+        eq(h.final.num, "", "right little is a whorl, so nothing here");
+        eq(h.final.den, "13");
+    });
+
+    /* =====================================================================
+       Third card — FBI manual, figure 350.
+       Printed classification:   26  5 R OOO 12
+                                     12 W MOI
+
+       The transcription of this figure does not print a major division, so
+       the assembled line cannot be compared directly; the divisions it does
+       print are asserted individually instead.
+
+         1 ulnar 26   2 radial 12  3 whorl O   4 ulnar 17  5 ulnar 12
+         6 whorl I    7 whorl M    8 ulnar 18  9 whorl I  10 ulnar 15
+       ===================================================================== */
+    var FIG350 = card([
+        [U, 26], [R, 12], [PW, null, "O"], [U, 17], [U, 12],
+        [PW, null, "I"], [PW, null, "M"], [U, 18], [PW, null, "I"], [U, 15]
+    ]);
+
+    test("fig. 350 — primary is 5 over 12", function () {
+        eq(A.henry(FIG350).primary.text, "5/12");
+    });
+
+    test("fig. 350 — secondary is a radial index over a whorl", function () {
+        var h = A.henry(FIG350);
+        eq(h.secondaryText.num, "R");
+        eq(h.secondaryText.den, "W");
+    });
+
+    test("fig. 350 — subsecondary mixes loop counts with whorl tracings", function () {
+        var h = A.henry(FIG350);
+        eq(h.subsecondary.num, "OOO");
+        eq(h.subsecondary.den, "MOI");
+    });
+
+    test("fig. 350 — key 26, final 12", function () {
+        var h = A.henry(FIG350);
+        eq(h.key.value, "26");
+        eq(h.final.num, "12");
+    });
+
+    /* =====================================================================
+       Fourth card — FBI manual, figure 349.
+       Printed classification:   1 R
+                                 1 aU
+
+       An all-loop card with an arch in the left thumb, which is where the
+       small letter goes: immediately left of the index capital, in the
+       denominator because that is the hand it sits on.
+       ===================================================================== */
+    var FIG349 = card([
+        [U, 14], [R, 12], [U, 11], [U, 13], [U, 9],
+        [PA], [U, 10], [U, 12], [U, 11], [U, 13]
+    ]);
+
+    test("fig. 349 — an all-loop card is primary 1 over 1", function () {
+        eq(A.henry(FIG349).primary.text, "1/1");
+    });
+
+    test("fig. 349 — the thumb arch sits left of the index capital", function () {
+        var h = A.henry(FIG349);
+        eq(h.secondaryText.num, "R", "numerator carries no small letter");
+        eq(h.secondaryText.den, "aU", "arch in the left thumb, then the index");
+    });
+
+    /* =====================================================================
        NCIC coding
        ===================================================================== */
 

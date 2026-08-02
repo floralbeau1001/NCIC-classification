@@ -117,10 +117,17 @@
         head.appendChild(el("span", "finger-name", finger.short));
         cell.appendChild(head);
 
-        var plate = el("div", "finger-plate");
+        /* The plate is a button so the impression can be opened in the
+           loupe — at card size only the gross pattern is legible. */
+        var plate = el("button", "finger-plate");
+        plate.type = "button";
+        plate.disabled = true;
+        plate.setAttribute("aria-label", "Magnify the impression in box " + finger.n);
         plate.appendChild(el("div", "plate-art"));
         var badge = el("span", "finger-code");
         plate.appendChild(badge);
+        plate.appendChild(el("span", "plate-zoom", "⌕"));
+        plate.addEventListener("click", function () { openLoupe(i); });
         cell.appendChild(plate);
 
         var controls = el("div", "finger-controls");
@@ -257,10 +264,18 @@
             var p = A.pattern(entry.patternId);
             var art = cell.querySelector(".plate-art");
 
-            var want = entry.patternId ? entry.patternId + ":" + slantFor(entry.patternId, finger) : "";
+            /* The box number is passed through so each finger draws a
+               different exemplar; a card of ten ulnar loops shows ten
+               different loops rather than the same one ten times. */
+            var want = entry.patternId
+                ? entry.patternId + ":" + slantFor(entry.patternId, finger) + ":" + i
+                : "";
             if (art.getAttribute("data-drawn") !== want) {
                 art.innerHTML = p
-                    ? A.diagram(entry.patternId, { slant: slantFor(entry.patternId, finger) })
+                    ? A.diagram(entry.patternId, {
+                          slant: slantFor(entry.patternId, finger),
+                          slot: i
+                      })
                     : A.diagramPlaceholder();
                 art.setAttribute("data-drawn", want);
             }
@@ -275,6 +290,10 @@
 
             var status = !p ? "empty" : (A.isComplete(entry) ? "ok" : "incomplete");
             cell.setAttribute("data-status", status);
+
+            /* Nothing to magnify until a pattern with a plate is chosen. */
+            cell.querySelector(".finger-plate").disabled =
+                !p || p.id === "AMPUTATED" || p.id === "UNPRINTABLE";
 
             var extras = cell.querySelector(".finger-extras");
             var hint = extras.querySelector(".hint");
@@ -710,6 +729,266 @@
         toast("Card cleared");
     }
 
+    /* =====================================================================
+       The loupe
+
+       A print box at card size is about 120px, which is enough to tell a
+       whorl from an arch and nothing else. Opening one full size makes the
+       ridges, the core and the delta actually readable, which is the whole
+       point of looking at an exemplar.
+       ===================================================================== */
+
+    var loupeZoom = 1, loupePan = { x: 0, y: 0 }, loupeDrag = null;
+
+    function applyLoupeTransform() {
+        var img = $("loupeImg");
+        img.style.transform = "translate(" + loupePan.x + "px," + loupePan.y + "px) scale(" + loupeZoom + ")";
+        img.style.cursor = loupeZoom > 1 ? (loupeDrag ? "grabbing" : "grab") : "zoom-in";
+    }
+
+    function openLoupe(index) {
+        var finger = A.FINGERS[index];
+        var entry = sheet[index];
+        var p = A.pattern(entry.patternId);
+        if (!p) return;
+
+        var fig = A.printFigure(entry.patternId, index);
+        var result = A.classifyAll(sheet);
+
+        $("loupeFinger").textContent = "Box " + finger.n + " · " + finger.name;
+        $("loupeTitle").textContent = p.name;
+        $("loupeNote").textContent = p.note || "";
+        $("loupeNcic").textContent = result.ncic.rows[index].code || "··";
+        $("loupeAfis").textContent = result.afis.rows[index].code || "··";
+        $("loupeFig").textContent = fig ? "fig. " + fig : "—";
+
+        var img = $("loupeImg");
+        if (fig) {
+            img.src = A.printUrl(
+                entry.patternId === "SCARRED" || entry.patternId === "UNCLASSIFIABLE"
+                    ? "scar"
+                    : ({ ULNAR_LOOP: "loop", RADIAL_LOOP: "loop" }[entry.patternId] || null)
+                      || plateKindFor(entry.patternId),
+                fig
+            );
+            img.hidden = false;
+            img.style.transform = "";
+            /* Mirror to match the box, so what is magnified is what was
+               shown rather than its handedness reversed. */
+            var mirror = (entry.patternId === "ULNAR_LOOP" || entry.patternId === "RADIAL_LOOP")
+                && slantFor(entry.patternId, finger) === "right";
+            img.classList.toggle("is-mirrored", !!mirror);
+        } else {
+            img.hidden = true;
+        }
+
+        loupeZoom = 1; loupePan = { x: 0, y: 0 };
+        applyLoupeTransform();
+
+        $("loupe").hidden = false;
+        document.body.style.overflow = "hidden";
+        $("loupeClose").focus();
+    }
+
+    /* patternId -> plate set, mirroring the table in patterns.js. */
+    function plateKindFor(id) {
+        return ({
+            PLAIN_ARCH: "plain-arch", TENTED_ARCH: "tented-arch",
+            ULNAR_LOOP: "loop", RADIAL_LOOP: "loop",
+            PLAIN_WHORL: "plain-whorl", CENTRAL_POCKET: "central-pocket",
+            DOUBLE_LOOP: "double-loop", ACCIDENTAL: "accidental",
+            SCARRED: "scar", UNCLASSIFIABLE: "scar"
+        })[id] || null;
+    }
+
+    function closeLoupe() {
+        $("loupe").hidden = true;
+        document.body.style.overflow = "";
+    }
+
+    function wireLoupe() {
+        $("loupeClose").addEventListener("click", closeLoupe);
+        $("loupe").addEventListener("click", function (e) {
+            if (e.target === $("loupe")) closeLoupe();
+        });
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && !$("loupe").hidden) closeLoupe();
+        });
+
+        var img = $("loupeImg");
+        img.addEventListener("wheel", function (e) {
+            e.preventDefault();
+            loupeZoom = Math.min(6, Math.max(1, loupeZoom * (e.deltaY < 0 ? 1.18 : 1 / 1.18)));
+            if (loupeZoom === 1) loupePan = { x: 0, y: 0 };
+            applyLoupeTransform();
+        }, { passive: false });
+
+        img.addEventListener("pointerdown", function (e) {
+            if (loupeZoom === 1) {
+                loupeZoom = 2.6;
+                applyLoupeTransform();
+                return;
+            }
+            loupeDrag = { x: e.clientX - loupePan.x, y: e.clientY - loupePan.y };
+            img.setPointerCapture(e.pointerId);
+            applyLoupeTransform();
+        });
+        img.addEventListener("pointermove", function (e) {
+            if (!loupeDrag) return;
+            loupePan = { x: e.clientX - loupeDrag.x, y: e.clientY - loupeDrag.y };
+            applyLoupeTransform();
+        });
+        ["pointerup", "pointercancel"].forEach(function (ev) {
+            img.addEventListener(ev, function () { loupeDrag = null; applyLoupeTransform(); });
+        });
+    }
+
+    /* =====================================================================
+       Practice
+
+       One real impression at a time, name the pattern. The hand is stated,
+       because a loop cannot be called ulnar or radial without it — the
+       ridges flow toward the little finger either way, and which bone that
+       is depends on the hand. Getting that reflex is most of the drill.
+       ===================================================================== */
+
+    var quiz = { current: null, right: 0, total: 0, streak: 0, best: 0, answered: false };
+
+    function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+    function newQuestion() {
+        var cat = A.printCatalogue();
+        if (!cat.length) return;
+
+        var item = pick(cat);
+        var hand = Math.random() < 0.5 ? "right" : "left";
+        var answer = item.patternId;
+        var slant = null;
+
+        if (item.patternId === "ULNAR_LOOP" || item.patternId === "RADIAL_LOOP") {
+            /* Show the loop at a random slant, then the hand decides which
+               loop it is: ulnar slants right on the right hand. */
+            slant = Math.random() < 0.5 ? "left" : "right";
+            answer = ((slant === "right") === (hand === "right")) ? "ULNAR_LOOP" : "RADIAL_LOOP";
+        }
+
+        var correct = A.pattern(answer);
+        var group = correct.group;
+        var others = A.PATTERNS.filter(function (p) {
+            return p.id !== answer && p.id !== "UNPRINTABLE" && p.id !== "UNCLASSIFIABLE"
+                && p.id !== "AMPUTATED";
+        });
+        /* Distractors from the same family first — telling a plain whorl
+           from a central pocket loop is the hard part, not telling it from
+           an arch. */
+        var near = others.filter(function (p) { return p.group === group; });
+        var far = others.filter(function (p) { return p.group !== group; });
+        shuffle(near); shuffle(far);
+        var options = [correct].concat(near.slice(0, 2)).concat(far.slice(0, 3)).slice(0, 4);
+        shuffle(options);
+
+        quiz.current = { item: item, hand: hand, slant: slant, answer: answer, options: options };
+        quiz.answered = false;
+        renderQuestion();
+    }
+
+    function shuffle(a) {
+        for (var i = a.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        return a;
+    }
+
+    function renderQuestion() {
+        var q = quiz.current;
+        if (!q) return;
+
+        var mirror = q.slant === "right";
+        $("quizPlate").innerHTML =
+            '<img class="print-ink" src="' + q.item.src + '" alt="A fingerprint impression to classify"' +
+            (mirror ? ' data-mirror="true"' : "") + " draggable=\"false\">";
+        $("quizHand").textContent = (q.hand === "right" ? "Right" : "Left") + " hand";
+
+        var host = $("quizOptions");
+        host.textContent = "";
+        q.options.forEach(function (p) {
+            var b = el("button", "quiz-option", p.name);
+            b.type = "button";
+            b.setAttribute("data-id", p.id);
+            b.addEventListener("click", function () { answerQuestion(p.id); });
+            host.appendChild(b);
+        });
+
+        $("quizFeedback").textContent = "";
+        $("quizFeedback").removeAttribute("data-state");
+        $("quizNext").disabled = true;
+    }
+
+    function answerQuestion(chosen) {
+        if (quiz.answered) return;
+        quiz.answered = true;
+
+        var q = quiz.current;
+        var right = chosen === q.answer;
+        var correct = A.pattern(q.answer);
+
+        quiz.total++;
+        if (right) {
+            quiz.right++;
+            quiz.streak++;
+            quiz.best = Math.max(quiz.best, quiz.streak);
+        } else {
+            quiz.streak = 0;
+        }
+
+        Array.prototype.forEach.call($("quizOptions").children, function (b) {
+            var id = b.getAttribute("data-id");
+            b.disabled = true;
+            if (id === q.answer) b.setAttribute("data-mark", "correct");
+            else if (id === chosen) b.setAttribute("data-mark", "wrong");
+        });
+
+        var fb = $("quizFeedback");
+        fb.setAttribute("data-state", right ? "right" : "wrong");
+        fb.textContent = "";
+        fb.appendChild(el("strong", null, right ? "Correct — " : "Not quite — "));
+        fb.appendChild(document.createTextNode(correct.name + ". " + (correct.note || "")));
+
+        if (q.slant) {
+            fb.appendChild(el("span", "quiz-why",
+                "The ridges slant " + q.slant + " and this is the " + q.hand +
+                " hand, so they run toward the " +
+                (q.answer === "ULNAR_LOOP" ? "little finger — the ulna."
+                                           : "thumb — the radius.")));
+        }
+        fb.appendChild(el("span", "quiz-fig", "Plate: figure " + q.item.figure + "."));
+
+        $("quizNext").disabled = false;
+        renderScore();
+    }
+
+    function renderScore() {
+        $("quizStreak").textContent = quiz.streak;
+        $("quizPct").textContent = quiz.total
+            ? Math.round(quiz.right / quiz.total * 100) + "%"
+            : "—";
+        $("quizTally").textContent = quiz.total
+            ? quiz.right + " of " + quiz.total + " · best streak " + quiz.best
+            : "no answers yet";
+    }
+
+    function wirePractice() {
+        $("quizNext").addEventListener("click", newQuestion);
+        $("quizReset").addEventListener("click", function () {
+            quiz.right = quiz.total = quiz.streak = quiz.best = 0;
+            renderScore();
+            newQuestion();
+            toast("Score reset");
+        });
+        renderScore();
+    }
+
     /* --- theme ------------------------------------------------------------ */
 
     function setTheme(theme) {
@@ -732,12 +1011,25 @@
                 t.tabIndex = on ? 0 : -1;
                 $(t.getAttribute("aria-controls")).hidden = !on;
             });
+            /* Draw the first question whenever practice is actually opened
+               — by click, by arrow key, or by #practice in the URL — rather
+               than on load, so an unused drill costs nothing. */
+            if (tab.id === "tab-practice" && !quiz.current) newQuestion();
         }
 
-        /* Deep-linkable: #henry or #reference opens that panel directly. */
+        /* Deep-linkable: #henry, #reference or #practice opens that panel;
+           #box-4 opens the loupe on that impression. */
         function fromHash() {
             var want = window.location.hash.replace("#", "");
             if (!want) return;
+
+            var box = /^box-(\d+)$/.exec(want);
+            if (box) {
+                var n = parseInt(box[1], 10);
+                if (n >= 1 && n <= 10 && A.pattern(sheet[n - 1].patternId)) openLoupe(n - 1);
+                return;
+            }
+
             var match = tabs.filter(function (t) {
                 return t.getAttribute("aria-controls") === "panel-" + want;
             })[0];
@@ -818,14 +1110,19 @@
         $("tracerSide").addEventListener("change", tracer);
         $("tracerRidges").addEventListener("input", tracer);
 
-        wireTabs();
+        wireLoupe();
+        wirePractice();
         $("loadExample").textContent = "Load " + EXAMPLES[0].label;
 
+        /* Load any requested example before the hash is read: #box-4 has
+           nothing to magnify until the card it refers to exists. */
         var wanted = requestedExample();
         if (wanted >= 0) {
             exampleIndex = wanted;
             loadExample();
         }
+
+        wireTabs();
     }
 
     if (document.readyState === "loading") {

@@ -9,12 +9,16 @@ classifications at the same time:
 | **IAFIS / AFIS** | The eight pattern-level codes — `AU` `WU` `RS` `LS` `SR` `XX` `UC` `UP` |
 | **Henry, FBI-extended** | key · major · primary · secondary · subsecondary · final, as a fraction, plus the second subsecondary |
 
+The print boxes show real FBI reference impressions, and a **Practice** tab
+drills you on them: a genuine print, the hand it came from, name the pattern.
+Clicking any box opens it in a loupe large enough to read the ridges.
+
 No build step, no dependencies, no network. Open `index.html`.
 
-`tests.html` runs the rule tests in the page. The anchor case is figure 352 of
-the FBI manual, which prints both the ten ridge counts and the resulting
-classification, so the entire Henry formula is asserted end to end rather than
-one table at a time.
+`tests.html` runs the rule tests in the page — **50 of them**, including four
+worked cards transcribed from the FBI manual. Figures 352 and 353 print both
+the ten ridge counts and the resulting classification, so the entire Henry
+formula is asserted end to end rather than one table at a time.
 
 ---
 
@@ -154,9 +158,20 @@ far left of the numerator.
 
 ---
 
-## The worked example
+## The worked examples
 
-`index.html?example=1` loads figure 352 from the FBI manual:
+Four cards from the manual are encoded as tests. Two print both the ridge
+counts and the finished classification, so the whole formula can be checked
+end to end:
+
+| Figure | What it pins down |
+| --- | --- |
+| **352** | Full formula. Both thumbs large, so the expanded major table lands on `L` |
+| **353** | Full formula. Right thumb 22 lands on `M` on that same table, and with no loop in the right little finger the final falls through to the left |
+| **350** | Primary, secondary, subsecondary, key and final; the source omits the major |
+| **349** | An arch in the left thumb, placed as a small letter immediately left of the index capital |
+
+`index.html?example=1` loads figure 352:
 
 | Finger | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -183,12 +198,16 @@ the lowercase `d`, and the small-letter group.
 index.html            the bench
 tests.html            rule tests, run in the page
 assets/classify.js    the engine — pure functions, no DOM
-assets/patterns.js    which exemplar plate each pattern shows
-assets/plates.js      the impressions, inlined as data URIs (generated)
-assets/app.js         the UI
+assets/prints.js      which verified figures exist, by pattern (generated)
+assets/patterns.js    which exemplar each box gets, and its handedness
+assets/app.js         the UI, the loupe and the practice drill
 assets/styles.css     two themes: Bench (dark) and Paper (light)
-assets/patterns/      the same impressions as standalone PNGs
+assets/prints/        the 50 reference impressions
 ```
+
+Deep links: `?example=1` and `?example=2` open a worked card, `#henry`,
+`#reference` and `#practice` open a panel, and `#box-4` opens the loupe on that
+impression.
 
 `classify.js` knows nothing about the page and the page contains no
 classification logic, so the rules can be tested directly and read without
@@ -198,26 +217,46 @@ wading through DOM code.
 
 The print boxes show the FBI's own reference exemplars, cut from the plates in
 *The Science of Fingerprints* — a United States Government work, and so in the
-public domain. Each has been reduced to an alpha channel and is painted through
-a CSS mask rather than shown as an image, so the ridges take the ink colour of
-whichever theme is running.
+public domain. There are **50 of them**, six to ten per pattern.
 
-| Pattern | Figure | Pattern | Figure |
-| --- | --- | --- | --- |
-| Plain arch | 109 | Plain whorl | 211 |
-| Tented arch | 128 | Central pocket loop whorl | 238 |
-| Loop | 74 | Double loop whorl | 255 |
-| | | Accidental whorl | 276 |
+**No card repeats a print.** A real ten-print card carries ten different
+impressions, so showing one exemplar per pattern — the same whorl in every
+whorl box — reads as obviously fake. The box number picks between the
+exemplars, so a card of ten ulnar loops shows ten different ulnar loops. The
+choice is deterministic: the same card always looks the same.
 
-One loop plate serves both slants. Figure 74 recurves down and to the left, so
-a right slant is the same impression mirrored — which is exactly what the
-opposite hand would leave.
+**Every figure was verified, not assumed.** Each sits inside a range the manual
+states outright ("Figures 122 to 133 are examples of the tented arch"), and was
+then corroborated independently. A ridge-orientation field is built for each
+impression and the Poincaré index taken around every point, which locates cores
+and deltas the way an AFIS extractor does: a closed path through the
+orientation field accumulates +180° around a core and −180° around a delta. An
+arch must show no delta and a loop exactly one, or the figure is dropped. Each
+survivor was then scored for legibility — over-inked bands, dropped-out paper,
+scanner scratches — and the best kept.
 
-They are inlined into `assets/plates.js` as data URIs rather than referenced by
-path, because `mask-image` is subject to CORS: a mask loaded by path is blocked
-outright when `index.html` is opened straight off disk as a `file://` page, and
-every print box comes up empty. Data URIs are exempt, so the bench works
-double-clicked as well as served.
+Two limits worth stating plainly. The delta gate is loosened for whorl
+subtypes: a whorl has two deltas, but they sit at opposite lower corners and
+the plates are cropped tight, so the outer one often falls outside the image.
+Demanding two rejected 20 of 24 central pocket loops, which is a fact about the
+crop, not about the manual. And a handful of figures were dropped by eye for
+partial rolls or blotches that read as false minutiae.
+
+**Loops are handed correctly.** Every stored loop is a left slant, measured
+rather than eyeballed: a loop's delta lies opposite its opening, so a delta to
+the right of the core means the ridges open left. Mirroring one yields a
+genuine right-slant loop, which is what the opposite hand leaves. Figure 99 was
+rejected because its delta sat almost directly under its core — it read as left
+slant before quantisation and right slant after, and a coin-flip is not a
+measurement.
+
+Scarring shows genuinely scarred impressions rather than clean ones with marks
+drawn over them. Figure 355, the one the manual calls *entirely obliterated*,
+is what `SR` displays; the partial scars stand in for `UC`.
+
+The build that does all this is not in the repo — it is a one-off over the
+Gutenberg plates — but every figure number is recorded in `assets/prints.js`,
+so any claim here can be checked against the manual.
 
 ---
 
