@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tenprint Bench — NCIC, IAFIS &amp; Henry fingerprint classification</title>
+<meta name="description" content="Classify a ten-finger card three ways at once: NCIC FPC, IAFIS/AFIS pattern codes, and the Henry system with FBI extensions.">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%AB%86%3C/text%3E%3C/svg%3E">
+<script>
+/* Settle the theme before first paint. Doing this from app.js instead would
+   paint the default once and then transition, which reads as a flash. */
+(function () {
+    var t = null;
+    try { t = localStorage.getItem("tenprint-bench:theme"); } catch (e) { /* ignore */ }
+    if (t !== "light" && t !== "dark") {
+        t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
+</head>
+<body>
+
+<a class="skip" href="#card">Skip to the card</a>
+
+<header class="masthead">
+    <div class="masthead-id">
+        <span class="masthead-rule" aria-hidden="true"></span>
+        <h1>Tenprint&nbsp;Bench</h1>
+        <p class="masthead-sub">Classification &amp; ridge-count worksheet</p>
+    </div>
+
+    <p class="masthead-blurb">
+        One card in, three classifications out — the <strong>NCIC FPC</strong> twenty-character
+        formula, the <strong>IAFIS/AFIS</strong> pattern codes, and the full
+        <strong>Henry</strong> fraction with the FBI extensions. Every rule is
+        cited; every table is <a href="tests.html">checked against worked examples</a>
+        from the FBI manual.
+    </p>
+
+    <div class="masthead-tools">
+        <button type="button" id="themeToggle" class="btn btn-quiet" aria-pressed="false">
+            <span data-theme-label>Paper</span>
+        </button>
+        <a class="btn btn-quiet" href="tests.html">Rule tests</a>
+    </div>
+</header>
+
+<!-- ===================================================================
+     The rail. Sticks to the top so the three formulas stay visible
+     while the card below is being filled in.
+     =================================================================== -->
+<div class="rail" id="rail">
+    <div class="rail-inner">
+
+        <section class="readout" data-system="ncic" aria-labelledby="ncic-label">
+            <header>
+                <h2 id="ncic-label">NCIC <abbr title="Fingerprint Classification">FPC</abbr></h2>
+                <button type="button" class="copy" data-copy="ncic" title="Copy the NCIC code">Copy</button>
+            </header>
+            <output class="code code-ncic" id="ncicCode">·· ·· ·· ·· ·· ·· ·· ·· ·· ··</output>
+            <p class="readout-note" id="ncicNote">20 characters · right thumb first</p>
+        </section>
+
+        <section class="readout" data-system="afis" aria-labelledby="afis-label">
+            <header>
+                <h2 id="afis-label">IAFIS pattern</h2>
+                <button type="button" class="copy" data-copy="afis" title="Copy the IAFIS codes">Copy</button>
+            </header>
+            <output class="code code-afis" id="afisCode">·· ·· ·· ·· ·· ·· ·· ·· ·· ··</output>
+            <p class="readout-note" id="afisNote">AU · WU · RS · LS · SR · XX · UC · UP</p>
+        </section>
+
+        <section class="readout readout-henry" data-system="henry" aria-labelledby="henry-label">
+            <header>
+                <h2 id="henry-label">Henry <span class="tag">FBI ext.</span></h2>
+                <button type="button" class="copy" data-copy="henry" title="Copy the Henry formula">Copy</button>
+            </header>
+            <output class="fraction" id="henryCode">
+                <span class="fraction-num" id="henryNum">—</span>
+                <span class="fraction-bar" aria-hidden="true"></span>
+                <span class="fraction-den" id="henryDen">—</span>
+            </output>
+            <p class="readout-note" id="henryNote">key · major · primary · secondary · subsecondary · final</p>
+        </section>
+
+        <div class="rail-status">
+            <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" id="meter">
+                <span class="meter-fill" id="meterFill"></span>
+            </div>
+            <p class="rail-count"><output id="meterLabel">0</output> of 10 fingers classified</p>
+        </div>
+
+    </div>
+</div>
+
+<main>
+
+<!-- ===================================================================
+     The card. Boxes 1-5 are the right hand, 6-10 the left, matching
+     the layout of a real tenprint card.
+     =================================================================== -->
+<section class="card" id="card" aria-labelledby="card-label">
+
+    <div class="card-head">
+        <h2 id="card-label" class="card-title">Ten&nbsp;Print Card</h2>
+
+        <div class="field">
+            <label for="subjectName">Subject</label>
+            <input type="text" id="subjectName" placeholder="Unknown" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+            <label for="caseRef">Reference</label>
+            <input type="text" id="caseRef" placeholder="—" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="stamp" id="stamp" data-state="empty"><span>No entries</span></div>
+    </div>
+
+    <div class="hands">
+        <section class="hand" data-hand="right" aria-labelledby="right-label">
+            <h3 id="right-label"><span>Right hand</span><small>boxes 1&ndash;5</small></h3>
+            <div class="fingers" data-slots="right"></div>
+        </section>
+
+        <section class="hand" data-hand="left" aria-labelledby="left-label">
+            <h3 id="left-label"><span>Left hand</span><small>boxes 6&ndash;10</small></h3>
+            <div class="fingers" data-slots="left"></div>
+        </section>
+    </div>
+
+    <div class="card-foot">
+        <button type="button" class="btn btn-primary" id="loadExample">Load worked example</button>
+        <button type="button" class="btn" id="randomise">Random card</button>
+        <button type="button" class="btn" id="clearAll">Clear</button>
+        <span class="foot-spacer"></span>
+        <button type="button" class="btn" id="copyReport">Copy full report</button>
+        <button type="button" class="btn" id="downloadPng">Download PNG</button>
+        <button type="button" class="btn" id="printCard">Print</button>
+    </div>
+</section>
+
+<!-- ===================================================================
+     Workings. Everything the three readouts are hiding.
+     =================================================================== -->
+<section class="workings" aria-labelledby="workings-label">
+    <h2 id="workings-label" class="visually-hidden">Detailed workings</h2>
+
+    <div class="tabs" role="tablist" aria-label="Detailed workings">
+        <button role="tab" id="tab-breakdown" aria-controls="panel-breakdown" aria-selected="true"  class="tab">Per-finger breakdown</button>
+        <button role="tab" id="tab-henry"     aria-controls="panel-henry"     aria-selected="false" class="tab" tabindex="-1">Henry working</button>
+        <button role="tab" id="tab-reference" aria-controls="panel-reference" aria-selected="false" class="tab" tabindex="-1">Code tables</button>
+    </div>
+
+    <div class="panel" id="panel-breakdown" role="tabpanel" aria-labelledby="tab-breakdown" tabindex="0">
+        <div class="table-scroll">
+            <table class="breakdown">
+                <caption class="visually-hidden">Per-finger classification breakdown</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="col-no">#</th>
+                        <th scope="col">Finger</th>
+                        <th scope="col">Pattern recorded</th>
+                        <th scope="col" class="col-code">NCIC</th>
+                        <th scope="col" class="col-code">IAFIS</th>
+                    </tr>
+                </thead>
+                <tbody id="breakdownBody"></tbody>
+            </table>
+        </div>
+        <div class="flags" id="flags"></div>
+    </div>
+
+    <div class="panel" id="panel-henry" role="tabpanel" aria-labelledby="tab-henry" tabindex="0" hidden>
+        <div class="henry-grid" id="henryGrid"></div>
+    </div>
+
+    <div class="panel" id="panel-reference" role="tabpanel" aria-labelledby="tab-reference" tabindex="0" hidden>
+        <div class="ref-grid">
+
+            <article class="ref">
+                <h3>NCIC FPC — two characters per finger</h3>
+                <table class="ref-table">
+                    <tbody>
+                        <tr><th scope="row">Plain arch</th><td><code>AA</code></td></tr>
+                        <tr><th scope="row">Tented arch</th><td><code>TT</code></td></tr>
+                        <tr><th scope="row">Ulnar loop</th><td>ridge count, zero&#8209;padded — <code>01</code>&ndash;<code>49</code></td></tr>
+                        <tr><th scope="row">Radial loop</th><td>ridge count <strong>+ 50</strong> — <code>51</code>&ndash;<code>99</code></td></tr>
+                        <tr><th scope="row">Plain whorl</th><td><code>PI</code> <code>PM</code> <code>PO</code></td></tr>
+                        <tr><th scope="row">Central pocket loop whorl</th><td><code>CI</code> <code>CM</code> <code>CO</code></td></tr>
+                        <tr><th scope="row">Double loop whorl</th><td><code>dI</code> <code>dM</code> <code>dO</code> <em>— lowercase d</em></td></tr>
+                        <tr><th scope="row">Accidental whorl</th><td><code>XI</code> <code>XM</code> <code>XO</code></td></tr>
+                        <tr><th scope="row">Missing or amputated</th><td><code>XX</code></td></tr>
+                        <tr><th scope="row">Completely scarred</th><td><code>SR</code></td></tr>
+                    </tbody>
+                </table>
+                <p class="ref-note">The NCIC table defines no code for an unclassifiable or
+                unprinted finger — those exist only in AFIS. This bench leaves the position
+                blank and flags it rather than inventing a value.</p>
+            </article>
+
+            <article class="ref">
+                <h3>IAFIS / AFIS pattern level</h3>
+                <table class="ref-table">
+                    <tbody>
+                        <tr><th scope="row"><code>AU</code></th><td>Arch, unspecified — plain and tented alike</td></tr>
+                        <tr><th scope="row"><code>WU</code></th><td>Whorl, unspecified — all four whorl types</td></tr>
+                        <tr><th scope="row"><code>RS</code></th><td>Right slant loop</td></tr>
+                        <tr><th scope="row"><code>LS</code></th><td>Left slant loop</td></tr>
+                        <tr><th scope="row"><code>SR</code></th><td>Complete scar</td></tr>
+                        <tr><th scope="row"><code>XX</code></th><td>Amputation</td></tr>
+                        <tr><th scope="row"><code>UC</code></th><td>Unable to classify</td></tr>
+                        <tr><th scope="row"><code>UP</code></th><td>Unable to print — image not supplied</td></tr>
+                    </tbody>
+                </table>
+                <p class="ref-note">Slant follows the hand: an ulnar loop slants right on the
+                right hand and left on the left hand, and a radial loop does the reverse.
+                The bench derives it from the box number, so you never enter it.</p>
+            </article>
+
+            <article class="ref">
+                <h3>Whorl ridge tracing</h3>
+                <p class="ref-prose">Trace the ridge from the extreme left delta toward the
+                right delta. If it passes <strong>inside</strong> (above) the right delta with
+                <strong>three or more</strong> ridges intervening, the tracing is
+                <strong>inner — I</strong>. If it passes <strong>outside</strong> (below) with
+                three or more intervening, it is <strong>outer — O</strong>. Every other
+                tracing is <strong>meeting — M</strong>.</p>
+                <div class="tracer" id="tracer">
+                    <p class="tracer-title">Work it out</p>
+                    <div class="tracer-controls">
+                        <label for="tracerSide" class="visually-hidden">Which side of the right delta</label>
+                        <select id="tracerSide">
+                            <option value="inside">Passes inside / above</option>
+                            <option value="outside">Passes outside / below</option>
+                        </select>
+                        <label for="tracerRidges" class="visually-hidden">Intervening ridges</label>
+                        <input type="number" id="tracerRidges" min="0" max="30" step="1" placeholder="ridges" inputmode="numeric">
+                        <output class="tracer-out" id="tracerOut">—</output>
+                    </div>
+                </div>
+            </article>
+
+            <article class="ref">
+                <h3>Henry — the FBI tables</h3>
+                <table class="ref-table">
+                    <tbody>
+                        <tr><th scope="row">Primary values</th><td>16 16 8 8 4 4 2 2 1 1 — whorls only; even fingers over odd, plus 1 each</td></tr>
+                        <tr><th scope="row">Secondary</th><td>Index fingers as <code>A T R U W</code></td></tr>
+                        <tr><th scope="row">Small letters</th><td><code>a</code> <code>t</code> anywhere; <code>r</code> outside the index fingers</td></tr>
+                        <tr><th scope="row">Subsecondary — index</th><td>1&ndash;9 = <code>I</code>, 10 and over = <code>O</code></td></tr>
+                        <tr><th scope="row">Subsecondary — middle</th><td>1&ndash;10 = <code>I</code>, 11 and over = <code>O</code></td></tr>
+                        <tr><th scope="row">Subsecondary — ring</th><td>1&ndash;13 = <code>I</code>, 14 and over = <code>O</code></td></tr>
+                        <tr><th scope="row">Major — thumbs</th><td>1&ndash;11 = <code>S</code>, 12&ndash;16 = <code>M</code>, 17 and over = <code>L</code></td></tr>
+                        <tr><th scope="row">Major — expanded</th><td>when the left thumb counts 17+, the right thumb reads 1&ndash;17 = <code>S</code>, 18&ndash;22 = <code>M</code>, 23 and over = <code>L</code></td></tr>
+                        <tr><th scope="row">Final</th><td>Ridge count of the right little finger loop; else the left</td></tr>
+                        <tr><th scope="row">Key</th><td>First loop from the right thumb, little fingers excluded</td></tr>
+                    </tbody>
+                </table>
+            </article>
+
+        </div>
+    </div>
+</section>
+
+<footer class="colophon">
+    <p><strong>Sources.</strong>
+    Henry tables and the ridge-tracing rule from the FBI, <em>The Science of Fingerprints:
+    Classification and Uses</em>. NCIC FPC table and the AFIS pattern codes from the NamUs
+    <em>Explanation of Fingerprint Classification Systems</em>. Henry primary values
+    corroborated by the NIJ <em>Fingerprint Sourcebook</em>, chapter 5.
+    Full citations in the README.</p>
+    <p class="colophon-warn">A classification is a filing aid, not an identification.
+    It narrows a search; it never establishes identity.</p>
+</footer>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/classify.js"></script>
+<script src="assets/plates.js"></script>
+<script src="assets/patterns.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

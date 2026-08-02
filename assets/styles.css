@@ -1,0 +1,864 @@
+/* ==========================================================================
+   Tenprint Bench
+
+   The look is borrowed from the thing itself: a printed record card on a
+   lab bench. Flat ink, ruled boxes, registration corners, a rubber stamp,
+   monospace for anything that is literally a code. Two themes — "Bench"
+   (dark room, lit card) and "Paper" (the card on its own).
+   ========================================================================== */
+
+/* --- 1. Tokens ----------------------------------------------------------- */
+
+:root {
+    --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+    --step-0: 0.9375rem;
+    --step--1: 0.8125rem;
+    --step--2: 0.6875rem;
+    --step-1: 1.125rem;
+    --step-2: 1.5rem;
+    --step-3: 2rem;
+
+    --radius: 3px;
+    --gap: 1.25rem;
+    --card-max: 1180px;
+
+    /* The page gutter. The rail bleeds to the full width by cancelling this
+       out, so the two must stay in step or the page scrolls sideways. */
+    --pad-x: 1.25rem;
+
+    --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* Bench — the default. */
+[data-theme="dark"] {
+    --bg:          #0c0e0d;
+    --bg-grain:    rgba(255, 255, 255, 0.022);
+    --surface:     #15100e;
+    --surface-2:   #1c1614;
+    --plate:       #0e0b09;
+    --print-ink:   #d3c8b3;
+
+    --ink:         #ece4d6;
+    --ink-soft:    #a79c8b;
+    --ink-faint:   #6d6459;
+
+    --rule:        #33291f;
+    --rule-strong: #4a3b2c;
+
+    --accent:      #e0913f;   /* amber — live values          */
+    --stamp:       #d24b32;   /* stamp red — alerts, headings  */
+    --cool:        #6fa5a8;   /* verdigris — secondary data    */
+    --ok:          #7fa860;
+
+    --shadow: 0 1px 0 rgba(255,255,255,0.03), 0 18px 40px -24px rgba(0,0,0,0.9);
+}
+
+/* Paper. */
+[data-theme="light"] {
+    --bg:          #ddd6c6;
+    --bg-grain:    rgba(0, 0, 0, 0.016);
+    --surface:     #faf6ec;
+    --surface-2:   #f2ecdd;
+    --plate:       #fffdf7;
+    --print-ink:   #23201a;
+
+    --ink:         #1c1a16;
+    --ink-soft:    #5d564a;
+    --ink-faint:   #8d8677;
+
+    --rule:        #cdc3ac;
+    --rule-strong: #a99c80;
+
+    --accent:      #9a5b12;
+    --stamp:       #a8321e;
+    --cool:        #2f5f66;
+    --ok:          #4a6b31;
+
+    --shadow: 0 1px 0 rgba(255,255,255,0.7), 0 16px 36px -26px rgba(60,45,25,0.55);
+}
+
+/* --- 2. Base ------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    padding: 0 var(--pad-x) 4rem;
+    font-family: var(--font-sans);
+    font-size: var(--step-0);
+    line-height: 1.55;
+    color: var(--ink);
+    background-color: var(--bg);
+    /* A faint bench grain so the flat fields do not read as a web form. */
+    background-image:
+        repeating-linear-gradient(0deg, var(--bg-grain) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(90deg, var(--bg-grain) 0 1px, transparent 1px 3px);
+    transition: background-color 0.35s var(--ease), color 0.35s var(--ease);
+}
+
+h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1.15; }
+
+a { color: inherit; text-underline-offset: 0.18em; text-decoration-color: var(--accent); }
+a:hover { color: var(--accent); }
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.visually-hidden {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+
+.skip {
+    position: absolute; left: -999px; top: 0; z-index: 100;
+    padding: 0.6rem 1rem; background: var(--stamp); color: #fff;
+}
+.skip:focus { left: 0.5rem; top: 0.5rem; }
+
+/* --- 3. Masthead --------------------------------------------------------- */
+
+.masthead {
+    max-width: var(--card-max);
+    margin: 0 auto;
+    padding: 2.5rem 0 1.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+    gap: 1.25rem 2.5rem;
+    align-items: end;
+}
+
+.masthead-rule {
+    display: block;
+    width: 3.5rem; height: 5px;
+    background: var(--stamp);
+    margin-bottom: 0.6rem;
+}
+
+.masthead h1 {
+    font-size: clamp(1.6rem, 4vw, var(--step-3));
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+}
+
+.masthead-sub {
+    margin: 0.25rem 0 0;
+    font-size: var(--step--2);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.masthead-blurb {
+    margin: 0;
+    max-width: 46ch;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    border-left: 1px solid var(--rule);
+    padding-left: 1.5rem;
+}
+.masthead-blurb strong { color: var(--ink); font-weight: 600; }
+
+.masthead-tools { display: flex; gap: 0.5rem; }
+
+/* --- 4. Buttons ---------------------------------------------------------- */
+
+.btn {
+    font: inherit;
+    font-size: var(--step--2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    padding: 0.55rem 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color 0.15s var(--ease), color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+    background: var(--stamp);
+    border-color: var(--stamp);
+    color: #fff;
+}
+.btn-primary:hover { background: transparent; color: var(--stamp); border-color: var(--stamp); }
+
+.btn-quiet { background: transparent; }
+
+/* --- 5. The rail --------------------------------------------------------- */
+
+.rail {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 calc(var(--pad-x) * -1);
+    padding: 0 var(--pad-x);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--rule);
+}
+
+.rail-inner {
+    max-width: var(--card-max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.45fr 1.45fr 1.1fr auto;
+    gap: 0 1.75rem;
+    align-items: stretch;
+    padding: 0.9rem 0;
+}
+
+.readout { min-width: 0; }
+
+.readout + .readout,
+.rail-status { border-left: 1px solid var(--rule); padding-left: 1.75rem; }
+
+.readout header {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.readout h2 {
+    font-size: var(--step--2);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 700;
+}
+.readout h2 abbr { text-decoration: none; }
+
+.tag {
+    font-size: 0.6rem; letter-spacing: 0.1em;
+    padding: 0.1rem 0.3rem;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink-faint);
+    border-radius: 2px;
+}
+
+.copy {
+    font: inherit; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+    background: none; border: 0; padding: 0.1rem 0.2rem;
+    color: var(--ink-faint); cursor: pointer;
+    opacity: 0; transition: opacity 0.15s var(--ease), color 0.15s var(--ease);
+}
+.readout:hover .copy, .copy:focus-visible { opacity: 1; }
+.copy:hover { color: var(--accent); }
+
+/* Twenty characters plus separators is wider than the column at any
+   comfortable size, so the code wraps rather than being clipped. The pairs
+   are space-separated, so a break never falls inside one. */
+.code {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: clamp(0.9rem, 1.15vw, 1.1rem);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    line-height: 1.3;
+    color: var(--accent);
+    padding-bottom: 0.15rem;
+}
+.code-afis { color: var(--cool); }
+
+.readout-note {
+    margin: 0.2rem 0 0;
+    font-size: var(--step--2);
+    color: var(--ink-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The Henry fraction is a real fraction, drawn as one. */
+.fraction {
+    display: grid;
+    justify-items: center;
+    font-family: var(--font-mono);
+    font-size: clamp(0.8rem, 1.25vw, 1rem);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    line-height: 1.3;
+}
+.fraction-bar {
+    width: 100%;
+    height: 1px;
+    background: var(--rule-strong);
+    margin: 0.15rem 0;
+}
+.fraction-num, .fraction-den { white-space: nowrap; }
+
+.rail-status { display: flex; flex-direction: column; justify-content: center; gap: 0.4rem; }
+
+.meter {
+    width: 8rem; height: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.meter-fill {
+    display: block; height: 100%; width: 0;
+    background: var(--accent);
+    transition: width 0.3s var(--ease), background 0.3s var(--ease);
+}
+.meter[aria-valuenow="10"] .meter-fill { background: var(--ok); }
+
+.rail-count { margin: 0; font-size: var(--step--2); color: var(--ink-faint); }
+
+/* --- 6. The card --------------------------------------------------------- */
+
+main { max-width: var(--card-max); margin: 0 auto; }
+
+.card {
+    position: relative;
+    margin-top: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    box-shadow: var(--shadow);
+}
+
+/* Registration corners — the small crop marks on a real form. */
+.card::before, .card::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 2px solid var(--stamp);
+    pointer-events: none;
+}
+.card::before { top: 7px; left: 7px; border-right: 0; border-bottom: 0; }
+.card::after  { bottom: 7px; right: 7px; border-left: 0; border-top: 0; }
+
+.card-head {
+    display: grid;
+    grid-template-columns: auto repeat(2, minmax(0, 1fr)) auto;
+    gap: 1.5rem;
+    align-items: end;
+    padding: 1.5rem 1.75rem 1.25rem;
+    border-bottom: 2px solid var(--rule-strong);
+}
+
+.card-title {
+    font-size: var(--step--2);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--stamp);
+    padding-bottom: 0.35rem;
+}
+
+.field { display: grid; gap: 0.2rem; min-width: 0; }
+
+.field label {
+    font-size: 0.625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.field input {
+    font: inherit;
+    font-size: var(--step-0);
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 0.25rem 0.1rem;
+    border-radius: 0;
+    min-width: 0;
+}
+.field input::placeholder { color: var(--ink-faint); }
+.field input:focus { outline: 0; border-bottom-color: var(--accent); }
+
+/* The stamp. Rotated, double-ruled, deliberately imperfect. */
+.stamp {
+    justify-self: end;
+    transform: rotate(-7deg);
+    border: 2px solid currentColor;
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+    padding: 0.3rem 0.85rem;
+    font-size: var(--step--2);
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.75;
+    white-space: nowrap;
+    transition: color 0.25s var(--ease), opacity 0.25s var(--ease);
+}
+.stamp[data-state="empty"]      { color: var(--ink-faint); opacity: 0.4; }
+.stamp[data-state="partial"]    { color: var(--accent); }
+.stamp[data-state="incomplete"] { color: var(--stamp); }
+.stamp[data-state="complete"]   { color: var(--ok); opacity: 0.9; }
+
+/* --- 7. Hands and finger boxes ------------------------------------------- */
+
+.hands { display: grid; }
+
+.hand { padding: 1.25rem 1.75rem 1.5rem; }
+.hand + .hand { border-top: 1px solid var(--rule); }
+
+.hand h3 {
+    display: flex; align-items: baseline; gap: 0.6rem;
+    font-size: var(--step--2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 0.9rem;
+}
+.hand h3 small {
+    font-size: 0.625rem; letter-spacing: 0.12em;
+    color: var(--ink-faint); font-weight: 500;
+}
+.hand h3::after {
+    content: ""; flex: 1; height: 1px; background: var(--rule);
+}
+
+.fingers {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.finger {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--rule);
+    background: var(--surface-2);
+    transition: border-color 0.2s var(--ease);
+}
+.finger:focus-within { border-color: var(--accent); }
+.finger[data-status="incomplete"] { border-color: var(--stamp); }
+
+.finger-head {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+.finger-no {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: var(--ink);
+}
+.finger-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The print box: where the impression would be rolled. Kept square, like
+   the numbered boxes on the card itself. */
+.finger-plate {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: var(--plate);
+    border-bottom: 1px solid var(--rule);
+    overflow: hidden;
+}
+
+.plate-art { position: absolute; inset: 0; }
+
+/* The impression is painted, not shown: the exemplar supplies only an alpha
+   mask, so the ridges take the theme's ink colour. */
+.print-ink {
+    position: absolute;
+    inset: 0;
+    background-color: var(--print-ink);
+    -webkit-mask-image: var(--impression);
+            mask-image: var(--impression);
+    -webkit-mask-size: cover;
+            mask-size: cover;
+    -webkit-mask-position: center;
+            mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+    opacity: 0.92;
+}
+/* A loop from the other hand is the same impression, handed. */
+.print-ink[data-mirror="true"] { transform: scaleX(-1); }
+.print-ink.is-scarred { opacity: 0.4; }
+
+.print-scar { position: absolute; inset: 0; }
+.print-scar i {
+    position: absolute;
+    left: -20%; width: 140%; height: 5px;
+    background: var(--stamp);
+    opacity: 0.85;
+    border-radius: 3px;
+}
+.print-scar i:nth-child(1) { top: 32%; transform: rotate(-38deg); }
+.print-scar i:nth-child(2) { top: 55%; transform: rotate(-31deg); }
+.print-scar i:nth-child(3) { top: 68%; transform: rotate(24deg); height: 3px; }
+
+.print-smudge {
+    position: absolute;
+    inset: 0;
+    background: var(--plate);
+    opacity: 0.62;
+    backdrop-filter: blur(2px);
+}
+
+/* Boxes with nothing to show are annotated the way a card would be. */
+.print-note {
+    position: absolute;
+    inset: 8px;
+    display: grid;
+    place-items: center;
+    border: 1px dashed var(--rule-strong);
+    color: var(--ink-faint);
+}
+.print-note-label {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+.print-note[data-kind="amputated"] {
+    background:
+        repeating-linear-gradient(45deg,
+            transparent 0 7px,
+            color-mix(in srgb, var(--ink-faint) 22%, transparent) 7px 8px);
+}
+.print-note[data-kind="unclassifiable"] { border-style: solid; }
+
+.print-empty {
+    position: absolute;
+    inset: 8px;
+    border: 1px dashed var(--rule);
+    opacity: 0.55;
+}
+
+.finger-code {
+    position: absolute;
+    top: 0.3rem; right: 0.4rem;
+    z-index: 2;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--plate) 82%, transparent);
+    padding: 0.05rem 0.28rem;
+    border-radius: 2px;
+}
+.finger-code[data-empty="true"] {
+    color: var(--ink-faint); font-weight: 400; background: none;
+}
+
+/* An implicit auto column would be sized by the widest option text
+   ("Central Pocket Loop Whorl") and push the whole card past the viewport on
+   a phone. Pin the track so the select can actually shrink. */
+.finger-controls {
+    padding: 0.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+}
+
+.finger select,
+.finger input[type="number"] {
+    font: inherit;
+    font-size: var(--step--2);
+    width: 100%;
+    min-width: 0;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    padding: 0.4rem 0.45rem;
+}
+.finger select:focus, .finger input:focus { outline: 0; border-color: var(--accent); }
+.finger input::placeholder { color: var(--ink-faint); }
+
+/* Tracing is three states — a segmented control beats a dropdown. */
+.tracing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.tracing button {
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    font-weight: 700;
+    padding: 0.35rem 0;
+    color: var(--ink-faint);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    cursor: pointer;
+    transition: color 0.12s var(--ease), border-color 0.12s var(--ease), background 0.12s var(--ease);
+}
+.tracing button:hover { color: var(--ink); }
+.tracing button[aria-pressed="true"] {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.hint {
+    margin: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    color: var(--stamp);
+    text-transform: uppercase;
+}
+
+/* --- 8. Card footer ------------------------------------------------------ */
+
+.card-foot {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+    padding: 1rem 1.75rem 1.25rem;
+    border-top: 2px solid var(--rule-strong);
+}
+.foot-spacer { flex: 1; }
+
+/* --- 9. Workings --------------------------------------------------------- */
+
+.workings { margin-top: 2rem; }
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+}
+
+.tab {
+    font: inherit;
+    font-size: var(--step--2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-faint);
+    padding: 0.7rem 1.1rem;
+    cursor: pointer;
+    margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--stamp); border-bottom-color: var(--stamp); }
+
+.panel { padding: 1.5rem 0 0; }
+
+.table-scroll { overflow-x: auto; }
+
+.breakdown { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+.breakdown th, .breakdown td {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: baseline;
+}
+.breakdown thead th {
+    font-size: 0.625rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); border-bottom-color: var(--rule-strong);
+    white-space: nowrap;
+}
+.breakdown tbody tr:hover { background: var(--surface-2); }
+.breakdown .col-no { width: 2.5rem; }
+.breakdown .col-code { width: 6rem; }
+.breakdown td.mono {
+    font-family: var(--font-mono); font-weight: 700; color: var(--accent);
+}
+.breakdown td.mono.cool { color: var(--cool); }
+.breakdown td.mono.void { color: var(--ink-faint); font-weight: 400; }
+.breakdown .fname { white-space: nowrap; }
+.breakdown .detail { color: var(--ink-soft); }
+
+.flags { margin-top: 1rem; display: grid; gap: 0.5rem; }
+.flag {
+    display: flex; gap: 0.65rem; align-items: baseline;
+    font-size: var(--step--1);
+    padding: 0.65rem 0.85rem;
+    border-left: 3px solid var(--stamp);
+    background: var(--surface);
+    color: var(--ink-soft);
+}
+.flag[data-kind="info"] { border-left-color: var(--cool); }
+.flag[data-kind="ok"]   { border-left-color: var(--ok); }
+.flag strong { color: var(--ink); font-weight: 600; }
+
+/* Henry working — one tile per division. Cells carry their own rules
+   rather than showing through a gap, so a short final row leaves clean
+   empty space instead of a stray block of grid background. */
+.henry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
+}
+
+.hcell {
+    background: var(--surface);
+    padding: 1rem 1.1rem;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+}
+
+.hcell h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.625rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 700;
+}
+.hcell .value {
+    font-family: var(--font-mono);
+    font-size: var(--step-1);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+}
+.hcell .value .over { color: var(--ink-faint); font-weight: 400; margin: 0 0.25em; }
+.hcell p { margin: 0.45rem 0 0; font-size: var(--step--1); color: var(--ink-soft); }
+.hcell code { font-family: var(--font-mono); color: var(--ink); }
+
+/* Reference tables. Columns rather than a grid: the four articles are very
+   different heights, and columns pack them without leaving one lane empty. */
+.ref-grid {
+    columns: 3 300px;
+    column-gap: 2rem;
+}
+.ref {
+    break-inside: avoid;
+    margin-bottom: 2rem;
+}
+.ref h3 {
+    font-size: var(--step--1);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stamp);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 0.75rem;
+}
+.ref-table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+.ref-table th, .ref-table td {
+    text-align: left; padding: 0.4rem 0; border-bottom: 1px solid var(--rule);
+    vertical-align: baseline;
+}
+.ref-table th { font-weight: 500; color: var(--ink-soft); padding-right: 1rem; }
+.ref-table td { color: var(--ink); }
+.ref-table em { color: var(--ink-faint); font-size: var(--step--2); }
+code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--accent);
+    font-weight: 600;
+}
+.ref-note, .ref-prose { font-size: var(--step--1); color: var(--ink-soft); }
+.ref-prose strong { color: var(--ink); }
+
+.tracer { margin-top: 1rem; border: 1px solid var(--rule-strong); padding: 0.85rem; }
+.tracer-title {
+    margin: 0 0 0.5rem; font-size: 0.625rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-faint);
+}
+.tracer-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.tracer select, .tracer input {
+    font: inherit; font-size: var(--step--1);
+    color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--rule-strong); border-radius: var(--radius);
+    padding: 0.35rem 0.45rem;
+}
+.tracer input { width: 6rem; }
+.tracer-out {
+    font-family: var(--font-mono); font-size: var(--step-1); font-weight: 700;
+    color: var(--accent); margin-left: auto; min-width: 1.5rem; text-align: right;
+}
+
+/* --- 10. Colophon and toast ---------------------------------------------- */
+
+.colophon {
+    max-width: var(--card-max);
+    margin: 3.5rem auto 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    display: grid;
+    gap: 0.6rem;
+}
+.colophon p { margin: 0; max-width: 78ch; }
+.colophon strong { color: var(--ink-soft); }
+.colophon-warn { color: var(--stamp); opacity: 0.9; }
+
+.toast {
+    position: fixed;
+    left: 50%; bottom: 1.5rem;
+    transform: translate(-50%, 1.5rem);
+    background: var(--ink);
+    color: var(--bg);
+    font-size: var(--step--1);
+    font-weight: 600;
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--radius);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+    z-index: 60;
+}
+.toast[data-show="true"] { opacity: 1; transform: translate(-50%, 0); }
+
+/* --- 11. Narrow screens -------------------------------------------------- */
+
+@media (max-width: 1080px) {
+    .masthead { grid-template-columns: 1fr auto; }
+    .masthead-blurb { grid-column: 1 / -1; border-left: 0; padding-left: 0; }
+    .rail-inner { grid-template-columns: 1fr 1fr; gap: 0.9rem 1.25rem; }
+    .readout + .readout, .rail-status { border-left: 0; padding-left: 0; }
+    .readout, .rail-status { border-top: 1px solid var(--rule); padding-top: 0.7rem; }
+    .rail-inner > :nth-child(-n+2) { border-top: 0; padding-top: 0; }
+}
+
+@media (max-width: 820px) {
+    .fingers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card-head { grid-template-columns: 1fr 1fr; }
+    .stamp { grid-column: 2; justify-self: end; }
+}
+
+@media (max-width: 560px) {
+    :root { --pad-x: 0.75rem; }
+    .fingers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rail-inner { grid-template-columns: 1fr; }
+    .rail-inner > :nth-child(2) { border-top: 1px solid var(--rule); padding-top: 0.7rem; }
+    .card-head, .hand, .card-foot { padding-inline: 1rem; }
+    /* Four items across two columns squeezes the subject field to nothing. */
+    .card-head { grid-template-columns: 1fr; gap: 0.9rem; }
+    .stamp { grid-column: 1; justify-self: start; }
+    .masthead { padding-top: 1.5rem; }
+    .card-foot > .btn { flex: 1 1 auto; }
+    .foot-spacer { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+/* --- 12. Print ----------------------------------------------------------- */
+
+@media print {
+    :root { --shadow: none; }
+    body {
+        background: #fff; color: #000;
+        padding: 0; font-size: 10pt;
+    }
+    .masthead-tools, .card-foot, .tabs, .toast, .skip, .rail-status, .copy,
+    #panel-reference, #panel-henry { display: none !important; }
+    .rail { position: static; border-bottom: 1px solid #000; backdrop-filter: none; }
+    .card { border: 1px solid #000; break-inside: avoid; }
+    .finger { break-inside: avoid; }
+    .fingers { grid-template-columns: repeat(5, 1fr); }
+    .panel[hidden] { display: none; }
+}

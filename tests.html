@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rule tests — Tenprint Bench</title>
+<link rel="stylesheet" href="assets/styles.css">
+<script>
+/* Match whatever theme the bench was last left in, before first paint. */
+(function () {
+    var t = null;
+    try { t = localStorage.getItem("tenprint-bench:theme"); } catch (e) { /* ignore */ }
+    if (t !== "light" && t !== "dark") {
+        t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
+<style>
+    .tests { max-width: 900px; margin: 0 auto; }
+    .tests-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;
+                  padding: 2.5rem 0 1.25rem; border-bottom: 2px solid var(--rule-strong); }
+    .tests-head h1 { font-size: var(--step-2); text-transform: uppercase; letter-spacing: -0.01em; }
+    .tests-head p { margin: 0; color: var(--ink-soft); font-size: var(--step--1); flex: 1 1 24ch; }
+    #summary { font-family: var(--font-mono); font-weight: 700; font-size: var(--step-1);
+               padding: 0.2rem 0.7rem; border: 2px solid currentColor; }
+    #summary[data-state="pass"] { color: var(--ok); }
+    #summary[data-state="fail"] { color: var(--stamp); }
+    #results { list-style: none; margin: 0; padding: 0; }
+    .t { display: grid; grid-template-columns: 4rem 1fr; gap: 0 1rem;
+         padding: 0.55rem 0.25rem; border-bottom: 1px solid var(--rule); font-size: var(--step--1); }
+    .t-mark { font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; }
+    .t-pass .t-mark { color: var(--ok); }
+    .t-fail .t-mark { color: var(--stamp); }
+    .t-fail { background: color-mix(in srgb, var(--stamp) 8%, transparent); }
+    .t-msg { grid-column: 2; font-family: var(--font-mono); font-size: var(--step--2);
+             color: var(--stamp); margin-top: 0.25rem; }
+    .tests-foot { margin-top: 2rem; font-size: var(--step--1); color: var(--ink-faint); }
+</style>
+</head>
+<body>
+
+<div class="tests">
+    <header class="tests-head">
+        <h1>Rule tests</h1>
+        <p>The engine checked against worked examples from the FBI manual and against
+           each coding rule in turn. These run in the page — reload to re-run.</p>
+        <output id="summary" data-state="pass">running…</output>
+    </header>
+
+    <ul id="results"></ul>
+
+    <p class="tests-foot">
+        The anchor case is figure 352 of <em>The Science of Fingerprints</em>, which prints
+        both the ten ridge counts and the resulting classification, so the full Henry
+        formula can be asserted end to end. &nbsp;<a href="index.html">Back to the bench</a>
+    </p>
+</div>
+
+<script src="assets/classify.js"></script>
+<script src="assets/tests.js"></script>
+</body>
+</html>
